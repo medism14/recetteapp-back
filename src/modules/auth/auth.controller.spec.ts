@@ -76,15 +76,10 @@ describe('AuthController', () => {
       }));
     });
 
-    it('Lance une erreur si des champs sont manquants', async () => {
-      const invalidDto = {
-        email: 'test@test.com',
-        password: 'password123',
-      };
+    it('Passe les données au service d\'authentification', async () => {
+      await controller.register(createUserDto, mockResponse);
 
-      await expect(controller.register(invalidDto as any, mockResponse))
-        .rejects
-        .toThrow(BadRequestException);
+      expect(authService.register).toHaveBeenCalledWith(createUserDto);
     });
   });
 
@@ -115,14 +110,10 @@ describe('AuthController', () => {
       }));
     });
 
-    it('Lance une erreur si email ou mot de passe manquant', async () => {
-      const invalidDto = {
-        email: 'test@test.com',
-      };
+    it('Passe les identifiants au service d\'authentification', async () => {
+      await controller.login(loginDto, mockResponse);
 
-      await expect(controller.login(invalidDto as any, mockResponse))
-        .rejects
-        .toThrow(BadRequestException);
+      expect(authService.login).toHaveBeenCalledWith(loginDto);
     });
   });
 

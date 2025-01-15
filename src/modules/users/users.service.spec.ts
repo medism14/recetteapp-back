@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { UsersService } from './users.service';
 import { PrismaService } from 'prisma/prisma.service';
-import { InternalServerErrorException } from '@nestjs/common';
+import { InternalServerErrorException, NotFoundException } from '@nestjs/common';
 
 describe('UsersService', () => {
   let service: UsersService;
@@ -72,12 +72,12 @@ describe('UsersService', () => {
       );
     });
 
-    it("devrait retourner null si l'email n'existe pas", async () => {
+    it("devrait lancer une NotFoundException si l'email n'existe pas", async () => {
       mockPrismaService.user.findUnique.mockResolvedValue(null);
 
-      const result = await service.getUserByEmail('nonexistent@example.com');
-
-      expect(result).toBeNull();
+      await expect(service.getUserByEmail('nonexistent@example.com'))
+        .rejects
+        .toThrow(NotFoundException);
     });
   });
 });

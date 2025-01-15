@@ -8,16 +8,30 @@ import { PrismaService } from 'prisma/prisma.service';
 import { CreateRecipeDto } from './dto/create-recipe.dto';
 import { UpdateRecipeDto } from './dto/update-recipe.dto';
 import { FilterRecipeDto } from './dto/filter-recipe.dto';
+import { RecipeResponseDto } from './dto/recipe-response.dto';
 
+/**
+ * Service où l'on gère les recettes 
+ * Nous utilisons ici plusieurs fonctions avec prisma pour un accès et une communication avec la bdd
+ */
 @Injectable()
 export class RecipesService {
   constructor(private prismaService: PrismaService) {}
 
-  async getAllRecipes(filterDto?: FilterRecipeDto) {
+  /**
+   * Méthode pour récupérer toutes les recettes existantes
+   * 
+   * @param filterDto - Contient tous les filtres que l'utilisateur peut appliquer
+   * @throws {InternalServerErrorException} - En cas d'erreur avec les requêtes prisma
+   * @returns {Promise<RecipeResponseDto[]>} - Un ensemble de recettes avec la catégorie et l'utilisateur
+   */
+  async getAllRecipes(filterDto?: FilterRecipeDto): Promise<RecipeResponseDto[]> {
     try {
+      // Initialisation des objets pour les conditions WHERE et ORDER BY
       const where = {};
       let orderBy: any = {};
 
+      // Application des filtres si présents
       if (filterDto?.difficulty) {
         where['difficulty'] = filterDto.difficulty;
       }
@@ -26,6 +40,7 @@ export class RecipesService {
         where['categoryId'] = filterDto.categoryId;
       }
 
+      // Recherche insensible à la casse dans les ingrédients
       if (filterDto?.ingredients) {
         where['ingredients'] = {
           contains: filterDto.ingredients,
@@ -33,39 +48,33 @@ export class RecipesService {
         };
       }
 
+      // Gestion du tri des recettes selon différents critères
       switch (filterDto?.sortBy) {
         case 'createdAt':
-          orderBy = {
-            createdAt: 'desc',
-          };
+          orderBy = { createdAt: 'desc' };
           break;
         case 'name':
-          orderBy = {
-            name: 'asc',
-          };
+          orderBy = { name: 'asc' };
           break;
         case 'prepTime':
-          orderBy = {
-            prepTime: 'asc',
-          };
+          orderBy = { prepTime: 'asc' };
           break;
         case 'cookTime':
-          orderBy = {
-            cookTime: 'asc',
-          };
+          orderBy = { cookTime: 'asc' };
           break;
         default:
-          orderBy = {
-            createdAt: 'desc',
-          };
+          // Par défaut, tri par date de création décroissante
+          orderBy = { createdAt: 'desc' };
       }
 
+      // Récupération des recettes avec leurs relations
       const recipes = await this.prismaService.recipe.findMany({
         where,
         orderBy,
         include: {
           category: true,
           user: {
+            // On sélectionne uniquement les infos nécessaires de l'utilisateur
             select: {
               id: true,
               firstName: true,
@@ -84,8 +93,17 @@ export class RecipesService {
     }
   }
 
-  async createRecipe(createRecipeDto: CreateRecipeDto, initiatorId: number) {
+  /**
+   * Méthode pour créer une nouvelle recette
+   * 
+   * @param createRecipeDto - Les données de la recette à créer
+   * @param userId - L'ID de l'utilisateur qui crée la recette
+   * @throws {InternalServerErrorException} - Si la création échoue
+   * @returns {Promise<RecipeResponseDto>} - La recette créée avec sa catégorie et son créateur
+   */
+  async createRecipe(createRecipeDto: CreateRecipeDto, userId: number): Promise<RecipeResponseDto> {
     try {
+      // Création de la recette avec toutes ses propriétés
       return await this.prismaService.recipe.create({
         data: {
           name: createRecipeDto.name,
@@ -97,9 +115,10 @@ export class RecipesService {
           instructions: createRecipeDto.instructions,
           imageUrl: createRecipeDto.imageUrl,
           categoryId: createRecipeDto.categoryId,
-          userId: initiatorId,
+          userId, // Association avec l'utilisateur créateur
         },
         include: {
+          // Inclusion des relations pour la réponse
           category: true,
           user: {
             select: {
@@ -112,177 +131,143 @@ export class RecipesService {
         },
       });
     } catch (error) {
-
-        if (error instanceof UnauthorizedException) {
-            throw error;
-        }
-
       throw new InternalServerErrorException(
         'Une erreur est survenue lors de la création de la recette',
       );
     }
   }
 
-  async updateRecipe(
-    id: number,
-    updateRecipeDto: UpdateRecipeDto,
-    initiatorId: number,
-  ) {
-    try {
-      const recipe = await this.prismaService.recipe.findUnique({
-        where: { id },
-      });
+  /**
+   * Méthode pour modifier une recette existante
+   * 
+   * @param id - L'ID de la recette à modifier
+   * @param updateRecipeDto - Les nouvelles données de la recette
+   * @param userId - L'ID de l'utilisateur qui fait la modification
+   * @throws {NotFoundException} - Si la recette n'existe pas
+   * @throws {UnauthorizedException} - Si l'utilisateur n'est pas le créateur
+   * @returns {Promise<RecipeResponseDto>} - La recette modifiée
+   */
+  async updateRecipe(id: number, updateRecipeDto: UpdateRecipeDto, userId: number): Promise<RecipeResponseDto> {
+    // Vérification de l'existence de la recette
+    const recipe = await this.prismaService.recipe.findUnique({
+      where: { id },
+    });
 
-      if (!recipe) {
-        throw new NotFoundException('Recette non trouvée');
-      }
+    if (!recipe) {
+      throw new NotFoundException('Recette non trouvée');
+    }
 
-      if (initiatorId !== recipe.userId) {
-        throw new UnauthorizedException(
-          "Vous n'êtes pas autorisé à modifier cette recette"
-        );
-      }
+    // Vérification des droits de modification
+    if (recipe.userId !== userId) {
+      throw new UnauthorizedException('Vous n\'êtes pas autorisé à modifier cette recette');
+    }
 
-      const updatedRecipe = await this.prismaService.recipe.update({
-        where: {
-          id: id,
-        },
-        data: {
-          name: updateRecipeDto.name,
-          description: updateRecipeDto.description,
-          prepTime: updateRecipeDto.prepTime,
-          cookTime: updateRecipeDto.cookTime,
-          difficulty: updateRecipeDto.difficulty,
-          ingredients: updateRecipeDto.ingredients,
-          instructions: updateRecipeDto.instructions,
-          imageUrl: updateRecipeDto.imageUrl,
-          categoryId: updateRecipeDto.categoryId,
-          userId: initiatorId,
-        },
-        include: {
-          category: true,
-          user: {
-            select: {
-              id: true,
-              firstName: true,
-              lastName: true,
-              email: true,
-            },
+    // Mise à jour de la recette avec les nouvelles données
+    return this.prismaService.recipe.update({
+      where: { id },
+      data: updateRecipeDto,
+      include: {
+        category: true,
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
           },
         },
-      });
-      return updatedRecipe;
-    } catch (error) {
-      if (error instanceof NotFoundException || error instanceof UnauthorizedException) {
-        throw error;
-      }
-      throw new InternalServerErrorException(
-        'Une erreur est survenue lors de la mise à jour de la recette',
-      );
-    }
+      },
+    });
   }
 
-  async deleteRecipe(id: number, initiatorId: number) {
-    try {
-      const recipe = await this.prismaService.recipe.findUnique({
-        where: { id },
-      });
+  /**
+   * Méthode pour supprimer une recette
+   * 
+   * @param id - L'ID de la recette à supprimer
+   * @param userId - L'ID de l'utilisateur qui veut supprimer
+   * @throws {NotFoundException} - Si la recette n'existe pas
+   * @throws {UnauthorizedException} - Si l'utilisateur n'est pas le créateur
+   * @returns {Promise<{ message: string }>} - Message de confirmation
+   */
+  async deleteRecipe(id: number, userId: number): Promise<{ message: string }> {
+    const recipe = await this.prismaService.recipe.findUnique({
+      where: { id },
+    });
 
-      if (!recipe) {
-        throw new NotFoundException('Recette non trouvée');
-      }
-
-      if (initiatorId !== recipe.userId) {
-        throw new UnauthorizedException(
-          "Vous n'êtes pas autorisé à supprimer cette recette"
-        );
-      }
-
-      await this.prismaService.recipe.delete({
-        where: {
-          id: id,
-        },
-      });
-      return { message: 'Recette supprimée avec succès' };
-    } catch (error) {
-      if (error instanceof NotFoundException || error instanceof UnauthorizedException) {
-        throw error;
-      }
-      throw new InternalServerErrorException(
-        'Une erreur est survenue lors de la suppression de la recette',
-      );
+    if (!recipe) {
+      throw new NotFoundException('Recette non trouvée');
     }
+
+    if (recipe.userId !== userId) {
+      throw new UnauthorizedException('Vous n\'êtes pas autorisé à supprimer cette recette');
+    }
+
+    await this.prismaService.recipe.delete({
+      where: { id },
+    });
+
+    return { message: 'Recette supprimée avec succès' };
   }
 
-  async getRecipe(id: number) {
-    try {
-      const recipe = await this.prismaService.recipe.findUnique({
-        where: {
-          id: id,
-        },
-        include: {
-          category: true,
-          user: {
-            select: {
-              id: true,
-              firstName: true,
-              lastName: true,
-              email: true,
-            },
+  /**
+   * Méthode pour récupérer une recette spécifique
+   * 
+   * @param id - L'ID de la recette recherchée
+   * @throws {NotFoundException} - Si la recette n'existe pas
+   * @returns {Promise<RecipeResponseDto>} - La recette avec sa catégorie et son créateur
+   */
+  async getRecipe(id: number): Promise<RecipeResponseDto> {
+    const recipe = await this.prismaService.recipe.findUnique({
+      where: { id },
+      include: {
+        category: true,
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
           },
         },
-      });
+      },
+    });
 
-      if (!recipe) {
-        throw new NotFoundException('Recette non trouvée');
-      }
-
-      return recipe;
-    } catch (error) {
-      if (error instanceof NotFoundException) {
-        throw error;
-      }
-      throw new InternalServerErrorException(
-        'Une erreur est survenue lors de la récupération de la recette',
-      );
+    if (!recipe) {
+      throw new NotFoundException('Recette non trouvée');
     }
+
+    return recipe;
   }
 
-  async searchRecipe(text: string) {
-    try {
-      return await this.prismaService.recipe.findMany({
-        where: {
-          OR: [
-            {
-              name: {
-                contains: text,
-                mode: 'insensitive',
-              },
-            },
-            {
-              description: {
-                contains: text,
-                mode: 'insensitive',
-              },
-            },
-          ],
-        },
-        include: {
-          category: true,
-          user: {
-            select: {
-              id: true,
-              firstName: true,
-              lastName: true,
-              email: true,
-            },
+  /**
+   * Méthode pour rechercher des recettes par texte
+   * La recherche se fait sur le nom, la description et les ingrédients
+   * 
+   * @param text - Le texte à rechercher
+   * @returns {Promise<RecipeResponseDto[]>} - Les recettes qui correspondent à la recherche
+   */
+  async searchRecipe(text: string): Promise<RecipeResponseDto[]> {
+    return this.prismaService.recipe.findMany({
+      where: {
+        OR: [
+          // Recherche insensible à la casse dans plusieurs champs
+          { name: { contains: text, mode: 'insensitive' } },
+          { description: { contains: text, mode: 'insensitive' } },
+          { ingredients: { contains: text, mode: 'insensitive' } },
+        ],
+      },
+      include: {
+        // Inclusion des relations nécessaires
+        category: true,
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
           },
         },
-      });
-    } catch (error) {
-      throw new InternalServerErrorException(
-        'Une erreur est survenue lors de la recherche de recettes',
-      );
-    }
+      },
+    });
   }
 }

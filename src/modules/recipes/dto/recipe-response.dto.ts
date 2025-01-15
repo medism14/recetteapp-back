@@ -1,6 +1,6 @@
 import { Difficulty } from '@prisma/client';
 
-export interface IRecipe {
+export class RecipeResponseDto {
   id: number;
   name: string;
   description?: string;
@@ -14,6 +14,16 @@ export interface IRecipe {
   categoryId: number;
   createdAt: Date;
   updatedAt: Date;
-  category?: any;
-  user?: any;
-}
+  category?: {
+    id: number;
+    name: string;
+    description: string;
+    createdAt: Date;
+  };
+  user?: {
+    id: number;
+    email: string;
+    firstName: string;
+    lastName: string;
+  };
+} 

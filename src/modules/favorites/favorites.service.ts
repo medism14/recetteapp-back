@@ -1,30 +1,62 @@
-import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { IFavorite } from '@/interfaces/favorite.interface';
+import { Injectable, InternalServerErrorException, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { PrismaService } from 'prisma/prisma.service';
 
+/**
+ * Service où sont gérés les favoris d'un utilisateur
+ * On peut récupérer, ajouter et supprimer des recettes des favoris
+ * Chaque méthode vérifie les droits de l'utilisateur
+ */
 @Injectable()
 export class FavoritesService {
     constructor(
         private prismaService: PrismaService
     ) {}
 
-    async getAllFavorites(userId: number) {
+    /**
+     * Méthode pour récupérer tous les favoris d'un utilisateur
+     * On inclut les détails de la recette et sa catégorie pour l'affichage
+     * 
+     * @param userId - L'ID de l'utilisateur dont on veut les favoris
+     * @throws {InternalServerErrorException} - Si la récupération échoue
+     * @returns {Promise<IFavorite[]>} - La liste des favoris avec les recettes complètes
+     */
+    async getAllFavorites(userId: number): Promise<IFavorite[]> {
         try {
+            // Récupération des favoris avec les relations nécessaires
             const favorites = await this.prismaService.favorite.findMany({
-                where: {
-                    userId: userId,
-                },
+                where: { userId },
                 include: {
-                    recipe: true
+                    recipe: {
+                        include: {
+                            // On inclut aussi la catégorie de la recette
+                            category: true
+                        }
+                    }
                 }
             });
             return favorites;
         } catch (error) {
-            throw new Error(`Une erreur est survenue lors de la récupération des favoris`);
+            throw new InternalServerErrorException(
+                `Une erreur est survenue lors de la récupération des favoris`
+            );
         }
     }
 
-    async createFavorite(recipeId: number, initiatorId: number) {
+    /**
+     * Méthode pour ajouter une recette aux favoris
+     * Vérifie d'abord si la recette existe et si elle n'est pas déjà en favori
+     * 
+     * @param recipeId - L'ID de la recette à ajouter aux favoris
+     * @param userId - L'ID de l'utilisateur qui ajoute le favori
+     * @throws {NotFoundException} - Si la recette n'existe pas
+     * @throws {UnauthorizedException} - Si la recette est déjà dans les favoris
+     * @throws {InternalServerErrorException} - Si l'ajout échoue
+     * @returns {Promise<IFavorite>} - Le favori créé avec les détails de la recette
+     */
+    async createFavorite(recipeId: number, userId: number): Promise<IFavorite> {
         try {
+            // Vérification de l'existence de la recette
             const recipe = await this.prismaService.recipe.findUnique({
                 where: { id: recipeId }
             });
@@ -33,30 +65,59 @@ export class FavoritesService {
                 throw new NotFoundException('Recette non trouvée');
             }
 
-            const favorite = await this.prismaService.favorite.create({
-                data: {
-                    userId: initiatorId,
-                    recipeId: recipeId
-                },
-                include: {
-                    recipe: true
+            // Vérification si le favori existe déjà
+            const existingFavorite = await this.prismaService.favorite.findFirst({
+                where: {
+                    userId,
+                    recipeId
                 }
             });
-            return favorite;
+
+            if (existingFavorite) {
+                throw new UnauthorizedException('Cette recette est déjà dans vos favoris');
+            }
+
+            // Création du nouveau favori avec les relations
+            return this.prismaService.favorite.create({
+                data: {
+                    userId,
+                    recipeId
+                },
+                include: {
+                    recipe: {
+                        include: {
+                            category: true
+                        }
+                    }
+                }
+            });
         } catch (error) {
-            if (error instanceof NotFoundException) {
+            if (error instanceof NotFoundException || error instanceof UnauthorizedException) {
                 throw error;
             }
-            throw new Error(`Une erreur est survenue lors de la création du favori`);
+            throw new InternalServerErrorException(
+                `Une erreur est survenue lors de la création du favori`
+            );
         }
     }
 
-    async deleteFavorite(recipeId: number, initiatorId: number) {
+    /**
+     * Méthode pour retirer une recette des favoris
+     * Vérifie que le favori existe et appartient bien à l'utilisateur
+     * 
+     * @param recipeId - L'ID de la recette à retirer des favoris
+     * @param userId - L'ID de l'utilisateur qui retire le favori
+     * @throws {NotFoundException} - Si le favori n'existe pas
+     * @throws {UnauthorizedException} - Si l'utilisateur n'est pas autorisé
+     * @returns {Promise<{ message: string }>} - Message de confirmation
+     */
+    async deleteFavorite(recipeId: number, userId: number): Promise<{ message: string }> {
         try {
+            // Recherche du favori
             const favorite = await this.prismaService.favorite.findFirst({
                 where: {
-                    recipeId: recipeId,
-                    userId: initiatorId
+                    recipeId,
+                    userId
                 }
             });
 
@@ -64,26 +125,31 @@ export class FavoritesService {
                 throw new NotFoundException('Favori non trouvé');
             }
 
-            if (favorite.userId !== initiatorId) {
+            // Vérification des droits
+            if (favorite.userId !== userId) {
                 throw new UnauthorizedException(
                     "Vous n'êtes pas autorisé à supprimer ce favori"
                 );
             }
 
+            // Suppression du favori
             await this.prismaService.favorite.delete({
                 where: {
                     userId_recipeId: {
-                        userId: initiatorId,
-                        recipeId: recipeId
+                        userId,
+                        recipeId
                     }
                 }
             });
+
             return { message: 'Favori supprimé avec succès' };
         } catch (error) {
             if (error instanceof UnauthorizedException || error instanceof NotFoundException) {
                 throw error;
             }
-            throw new Error(`Une erreur est survenue lors de la suppression du favori`);
+            throw new InternalServerErrorException(
+                `Une erreur est survenue lors de la suppression du favori`
+            );
         }
     }
 }
