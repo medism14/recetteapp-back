@@ -26,6 +26,10 @@ describe('FavoritesService', () => {
       categoryId: 1,
       createdAt: new Date(),
       updatedAt: new Date(),
+      category: {
+        id: 1,
+        name: 'Catégorie Test'
+      }
     }
   };
 
@@ -68,7 +72,13 @@ describe('FavoritesService', () => {
 
       expect(prismaService.favorite.findMany).toHaveBeenCalledWith({
         where: { userId: 5 },
-        include: { recipe: true }
+        include: { 
+          recipe: {
+            include: {
+              category: true
+            }
+          }
+        }
       });
       expect(result).toEqual([mockFavorite]);
     });
@@ -86,7 +96,13 @@ describe('FavoritesService', () => {
           userId: 5,
           recipeId: 1
         },
-        include: { recipe: true }
+        include: {
+          recipe: {
+            include: {
+              category: true
+            }
+          }
+        }
       });
       expect(result).toEqual(mockFavorite);
     });
