@@ -1,7 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
-import { PrismaService } from '@prisma/prisma.service';
 import { BadRequestException } from '@nestjs/common';
 import { Response } from 'express';
 

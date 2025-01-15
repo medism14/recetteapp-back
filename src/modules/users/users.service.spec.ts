@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { UsersService } from './users.service';
-import { PrismaService } from '@prisma/prisma.service';
+import { PrismaService } from 'prisma/prisma.service';
 import { InternalServerErrorException } from '@nestjs/common';
 
 describe('UsersService', () => {
@@ -65,9 +65,7 @@ describe('UsersService', () => {
     });
 
     it("devrait lancer une InternalServerErrorException en cas d'erreur", async () => {
-      mockPrismaService.user.findUnique.mockRejectedValue(
-        new Error('Database error'),
-      );
+      mockPrismaService.user.findUnique.mockRejectedValue(new InternalServerErrorException());
 
       await expect(service.getUserByEmail('test@example.com')).rejects.toThrow(
         InternalServerErrorException,

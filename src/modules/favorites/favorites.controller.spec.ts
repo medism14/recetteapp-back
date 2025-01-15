@@ -1,7 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { FavoritesController } from './favorites.controller';
 import { FavoritesService } from './favorites.service';
-import { PrismaService } from '@prisma/prisma.service';
 import { Request } from 'express';
 
 describe('FavoritesController', () => {

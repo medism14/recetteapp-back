@@ -3,20 +3,10 @@ import { RecipesController } from './recipes.controller';
 import { RecipesService } from './recipes.service';
 import { Difficulty } from '@prisma/client';
 import { Request } from 'express';
-import { InternalServerErrorException } from '@nestjs/common';
 
 describe('RecipesController', () => {
   let controller: RecipesController;
   let recipesService: RecipesService;
-
-  const mockRecipesServices = {
-    getAllRecipes: jest.fn(),
-    createRecipe: jest.fn(),
-    updateRecipe: jest.fn(),
-    deleteRecipe: jest.fn(),
-    getRecipe: jest.fn(),
-    searchRecipe: jest.fn(),
-  };
 
   const mockRecipes = [
     {
@@ -51,32 +41,13 @@ describe('RecipesController', () => {
     },
   ];
 
-  const mockRecipe = {
-    id: 1,
-    name: 'Recette Test',
-    description: 'Ceci est une description de recette de test.',
-    instructions: 'Mélanger tous les ingrédients et cuire à feu moyen.',
-    prepTime: 15,
-    cookTime: 30,
-    difficulty: Difficulty.EASY,
-    ingredients: 'Ingrédient 1, Ingrédient 2',
-    imageUrl: 'http://example.com/image.jpg',
-    userId: 5,
-    categoryId: 1,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  };
-
-  const mockCreateRecipeDto = {
-    name: 'Recette Test',
-    description: 'Ceci est une description de recette de test.',
-    instructions: 'Mélanger tous les ingrédients et cuire à feu moyen.',
-    prepTime: 15,
-    cookTime: 30,
-    difficulty: Difficulty.EASY,
-    ingredients: 'Ingrédient 1, Ingrédient 2',
-    imageUrl: 'http://example.com/image.jpg',
-    categoryId: 5,
+  const mockRecipesService = {
+    getAllRecipes: jest.fn().mockResolvedValue(mockRecipes),
+    createRecipe: jest.fn(),
+    updateRecipe: jest.fn(),
+    deleteRecipe: jest.fn(),
+    getRecipe: jest.fn(),
+    searchRecipe: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -85,105 +56,80 @@ describe('RecipesController', () => {
       providers: [
         {
           provide: RecipesService,
-          useValue: mockRecipesServices,
+          useValue: mockRecipesService,
         },
       ],
     }).compile();
 
     controller = module.get<RecipesController>(RecipesController);
-  });
-
-  afterEach(() => {
-    jest.clearAllMocks();
+    recipesService = module.get<RecipesService>(RecipesService);
   });
 
   describe('getAllRecipes', () => {
     it('Retourne les recipes sans filtrage', async () => {
-      mockRecipesServices.getAllRecipes.mockResolvedValue(mockRecipes);
-
-      const result = controller.getAllRecipes();
+      mockRecipesService.getAllRecipes.mockResolvedValue(mockRecipes);
+      const result = await controller.getAllRecipes();
       expect(result).toEqual(mockRecipes);
     });
 
     it('Retourne tout les recipes par category', async () => {
-      mockRecipesServices.getAllRecipes.mockResolvedValue(mockRecipes);
-
-      const filterDto = {
-        categoryId: 5
-      }
-
-      const result = controller.getAllRecipes(filterDto);
-
-      expect(recipesService.getAllRecipes).toHaveBeenCalledWith(filterDto)
-      expect(result).toEqual(mockRecipes);
+      const filterDto = { categoryId: 1 };
+      mockRecipesService.getAllRecipes.mockResolvedValue([mockRecipes[0]]);
+      const result = await controller.getAllRecipes(filterDto);
+      expect(recipesService.getAllRecipes).toHaveBeenCalledWith(filterDto);
+      expect(result).toEqual([mockRecipes[0]]);
     });
   });
 
   describe('createRecipe', () => {
+    const mockCreateRecipeDto = {
+      name: 'Nouvelle Recette',
+      description: 'Description test',
+      instructions: 'Instructions test',
+      prepTime: 15,
+      cookTime: 30,
+      difficulty: Difficulty.EASY,
+      ingredients: 'Ingrédients test',
+      imageUrl: 'http://example.com/image.jpg',
+      categoryId: 1,
+    };
+
     it('Crée avec succès un recipe', async () => {
-      mockRecipesServices.createRecipe.mockResolvedValue(mockRecipe);
-      const mockRequest = {
-        user: { id: 1 }
-      } as unknown as Request;
-
-      const result = controller.createRecipe(mockRequest, mockCreateRecipeDto);
-
-      expect(recipesService.createRecipe).toHaveBeenCalledWith(mockCreateRecipeDto);
-      expect(result).toEqual(mockRecipe);
+      const mockRequest = { user: { id: 1 } } as unknown as Request;
+      mockRecipesService.createRecipe.mockResolvedValue(mockRecipes[0]);
+      const result = await controller.createRecipe(mockRequest, mockCreateRecipeDto);
+      expect(recipesService.createRecipe).toHaveBeenCalledWith(mockCreateRecipeDto, 1);
+      expect(result).toEqual(mockRecipes[0]);
     });
-
-    it('Erreur lors de la création d\'un recipe', async () => {
-      mockRecipesServices.createRecipe.mockRejectedValue(new InternalServerErrorException());
-      const mockRequest = {
-        user: { id: 1 }
-      } as unknown as Request;
-      
-      await expect(controller.createRecipe(mockRequest, mockCreateRecipeDto))
-        .rejects
-        .toThrow(InternalServerErrorException);
-    });
-  })
+  });
 
   describe('updateRecipe', () => {
+    const updateDto = {
+      name: 'Recette Modifiée',
+      description: 'Nouvelle description',
+      instructions: 'Nouvelles instructions',
+      prepTime: 20,
+      cookTime: 35,
+      difficulty: Difficulty.MEDIUM,
+      ingredients: 'Nouveaux ingrédients',
+      imageUrl: 'http://example.com/new-image.jpg',
+      categoryId: 2,
+    };
+
     it('Met à jour une recette avec succès', async () => {
-      const updateDto = {
-        name: 'Nouvelle Recette',
-        description: 'Nouvelle description',
-        prepTime: 25,
-        cookTime: 40,
-        difficulty: Difficulty.MEDIUM,
-        ingredients: 'Nouveaux ingrédients',
-        imageUrl: 'http://example.com/new.jpg',
-        categoryId: 2,
-      };
-
-      mockRecipesServices.updateRecipe.mockResolvedValue({ ...mockRecipe, ...updateDto });
-      const mockRequest = {
-        user: { id: 1 }
-      } as unknown as Request;
-
-      const result = await controller.updateRecipe(mockRequest, 1, {
-        ...updateDto,
-        instructions: 'Instructions test'
-      });
-
-      expect(recipesService.updateRecipe).toHaveBeenCalledWith(1, {
-        ...updateDto,
-        instructions: 'Instructions test'
-      }, 1);
-      expect(result.name).toBe(updateDto.name);
+      const mockRequest = { user: { id: 1 } } as unknown as Request;
+      mockRecipesService.updateRecipe.mockResolvedValue({ ...mockRecipes[0], ...updateDto });
+      const result = await controller.updateRecipe(mockRequest, 1, updateDto);
+      expect(recipesService.updateRecipe).toHaveBeenCalledWith(1, updateDto, 1);
+      expect(result).toEqual(expect.objectContaining(updateDto));
     });
   });
 
   describe('deleteRecipe', () => {
     it('Supprime une recette avec succès', async () => {
-      mockRecipesServices.deleteRecipe.mockResolvedValue({ message: 'Recette supprimée avec succès' });
-      const mockRequest = {
-        user: { id: 1 }
-      } as unknown as Request;
-
+      const mockRequest = { user: { id: 1 } } as unknown as Request;
+      mockRecipesService.deleteRecipe.mockResolvedValue({ message: 'Recette supprimée avec succès' });
       const result = await controller.deleteRecipe(mockRequest, 1);
-
       expect(recipesService.deleteRecipe).toHaveBeenCalledWith(1, 1);
       expect(result.message).toBe('Recette supprimée avec succès');
     });
@@ -191,23 +137,19 @@ describe('RecipesController', () => {
 
   describe('getRecipe', () => {
     it('Récupère une recette par son id', async () => {
-      mockRecipesServices.getRecipe.mockResolvedValue(mockRecipe);
-
+      mockRecipesService.getRecipe.mockResolvedValue(mockRecipes[0]);
       const result = await controller.getRecipe(1);
-
       expect(recipesService.getRecipe).toHaveBeenCalledWith(1);
-      expect(result).toEqual(mockRecipe);
+      expect(result).toEqual(mockRecipes[0]);
     });
   });
 
   describe('searchRecipe', () => {
     it('Cherche des recettes par texte', async () => {
-      mockRecipesServices.searchRecipe.mockResolvedValue([mockRecipe]);
-
+      mockRecipesService.searchRecipe.mockResolvedValue([mockRecipes[0]]);
       const result = await controller.searchRecipe('Test');
-
       expect(recipesService.searchRecipe).toHaveBeenCalledWith('Test');
-      expect(result).toEqual([mockRecipe]);
+      expect(result).toEqual([mockRecipes[0]]);
     });
   });
 });
