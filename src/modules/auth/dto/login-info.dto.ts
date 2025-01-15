@@ -1,3 +1,4 @@
-interface LoginInfoDto {
-    
+export class LoginInfoDto {
+    email: string;
+    password: string;
 }
