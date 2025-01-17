@@ -9,7 +9,7 @@ export interface IRecipe {
   cookTime: number;
   difficulty: Difficulty;
   ingredients: string;
-  imageUrl: string;
+  image: string;
   userId: number;
   categoryId: number;
   createdAt: Date;

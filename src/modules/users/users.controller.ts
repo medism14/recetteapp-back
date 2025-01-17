@@ -49,4 +49,21 @@ export class UsersController {
   async getUserByEmail(@Param('email') email: string): Promise<IUser> {
     return this.usersService.getUserByEmail(email);
   }
+
+  @ApiOperation({ 
+    summary: 'Récupérer tous les utilisateurs',
+    description: 'Retourne la liste de tous les utilisateurs enregistrés'
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Liste des utilisateurs retournée avec succès',
+  })
+  @ApiResponse({
+    status: 500,
+    description: 'Erreur serveur lors de la récupération'
+  })
+  @Get('all')
+  async getAllUsers(): Promise<IUser[]> {
+    return this.usersService.getAllUsers();
+  }
 }

@@ -9,7 +9,7 @@ export class RecipeResponseDto {
   cookTime: number;
   difficulty: Difficulty;
   ingredients: string;
-  imageUrl: string;
+  image: string;
   userId: number;
   categoryId: number;
   createdAt: Date;

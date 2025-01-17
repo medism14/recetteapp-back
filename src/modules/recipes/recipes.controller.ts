@@ -38,6 +38,7 @@ export class RecipesController {
   @ApiBody({ type: CreateRecipeDto })
   @Post()
   createRecipe(@Req() req: Request, @Body() createRecipeDto: CreateRecipeDto) {
+
     const initiatorId = req.user['id'];
     return this.recipesService.createRecipe(createRecipeDto, initiatorId);
   }
@@ -84,5 +85,14 @@ export class RecipesController {
   @Get('search/:text')
   searchRecipe(@Param('text') text: string) {
     return this.recipesService.searchRecipe(text);
+  }
+
+  @ApiOperation({ summary: 'Récupérer les recettes d\'un utilisateur' })
+  @ApiResponse({ status: 200, description: 'Recettes trouvées avec succès' })
+  @ApiResponse({ status: 500, description: 'Erreur serveur' })
+  @Get('user/recipe')
+  getUserRecipes(@Req() req: Request) {
+    const userId = req.user['id'];
+    return this.recipesService.getRecipesByUserId(userId);
   }
 }

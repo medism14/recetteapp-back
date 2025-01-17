@@ -8,7 +8,7 @@ import { AuthService } from './modules/auth/auth.service';
 
 // JWT Guard pour filtrer les requêtes et vérifier l'existance des token dans les cookies HttpOnly
 @Injectable()
-export class JwtAuthGuard implements CanActivate {
+export class AuthGuard implements CanActivate {
   constructor(private authService: AuthService) {}
 
   // Controle d'accès aux routes
@@ -17,8 +17,14 @@ export class JwtAuthGuard implements CanActivate {
     const request = context.switchToHttp().getRequest();
 
     // Autoriser certains endpoints à passer automatiquement (ceux qui en ont pas besoin)
-    const pathsAutorises = ['/auth', '/health'];
-    if (pathsAutorises.some((path) => request.path.startsWith(path))) {
+    const pathsAutorises = [
+      '/auth/login',
+      '/auth/register',
+      '/health'
+    ];
+
+    // Vérification plus stricte des chemins autorisés
+    if (pathsAutorises.some(path => request.path === path)) {
       return true;
     }
 

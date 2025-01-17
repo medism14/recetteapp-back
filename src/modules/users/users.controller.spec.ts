@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
 import { Request } from 'express';
+import { InternalServerErrorException } from '@nestjs/common';
 
 describe('UsersController', () => {
   let controller: UsersController;
@@ -17,6 +18,7 @@ describe('UsersController', () => {
 
   const mockUsersService = {
     getUserByEmail: jest.fn(),
+    getAllUsers: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -69,6 +71,48 @@ describe('UsersController', () => {
       const result = await controller.getUserByEmail('nonexistent@example.com');
 
       expect(result).toBeNull();
+    });
+  });
+
+  describe('getAllUsers', () => {
+    const mockUsers = [
+      {
+        id: 1,
+        email: 'user1@example.com',
+        firstName: 'John',
+        lastName: 'Doe',
+        createdAt: new Date(),
+      },
+      {
+        id: 2,
+        email: 'user2@example.com',
+        firstName: 'Jane',
+        lastName: 'Doe',
+        createdAt: new Date(),
+      },
+    ];
+
+    beforeEach(() => {
+      mockUsersService.getAllUsers = jest.fn();
+    });
+
+    it('Doit retourner la liste de tous les utilisateurs', async () => {
+      mockUsersService.getAllUsers.mockResolvedValue(mockUsers);
+
+      const result = await controller.getAllUsers();
+
+      expect(usersService.getAllUsers).toHaveBeenCalled();
+      expect(result).toEqual(mockUsers);
+    });
+
+    it('Doit propager l\'erreur en cas d\'échec', async () => {
+      mockUsersService.getAllUsers.mockRejectedValue(
+        new InternalServerErrorException()
+      );
+
+      await expect(controller.getAllUsers())
+        .rejects
+        .toThrow(InternalServerErrorException);
     });
   });
 });

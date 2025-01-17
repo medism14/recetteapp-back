@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { UsersService } from './users.service';
 import { PrismaService } from 'prisma/prisma.service';
-import { InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { InternalServerErrorException } from '@nestjs/common';
 
 describe('UsersService', () => {
   let service: UsersService;
@@ -18,6 +18,7 @@ describe('UsersService', () => {
   const mockPrismaService = {
     user: {
       findUnique: jest.fn(),
+      findMany: jest.fn(),
     },
   };
 
@@ -40,12 +41,8 @@ describe('UsersService', () => {
     jest.clearAllMocks();
   });
 
-  it('should be defined', () => {
-    expect(service).toBeDefined();
-  });
-
   describe('getUserByEmail', () => {
-    it('Doit retourner un utilisateur', async () => {
+    it('Doit retourner un utilisateur quand il existe', async () => {
       mockPrismaService.user.findUnique.mockResolvedValue(mockUser);
 
       const result = await service.getUserByEmail('test@example.com');
@@ -64,20 +61,67 @@ describe('UsersService', () => {
       expect(result).toEqual(mockUser);
     });
 
-    it("devrait lancer une InternalServerErrorException en cas d'erreur", async () => {
-      mockPrismaService.user.findUnique.mockRejectedValue(new InternalServerErrorException());
-
-      await expect(service.getUserByEmail('test@example.com')).rejects.toThrow(
-        InternalServerErrorException,
-      );
-    });
-
-    it("devrait lancer une NotFoundException si l'email n'existe pas", async () => {
+    it('Doit retourner null quand l\'utilisateur n\'existe pas', async () => {
       mockPrismaService.user.findUnique.mockResolvedValue(null);
 
-      await expect(service.getUserByEmail('nonexistent@example.com'))
+      const result = await service.getUserByEmail('nonexistent@example.com');
+      expect(result).toBeNull();
+    });
+
+    it('Doit lancer une InternalServerErrorException en cas d\'erreur de base de données', async () => {
+      mockPrismaService.user.findUnique.mockRejectedValue(new Error('DB Error'));
+
+      await expect(service.getUserByEmail('test@example.com'))
         .rejects
-        .toThrow(NotFoundException);
+        .toThrow(InternalServerErrorException);
+    });
+  });
+
+  describe('getAllUsers', () => {
+    const mockUsers = [
+      {
+        id: 1,
+        email: 'user1@example.com',
+        firstName: 'John',
+        lastName: 'Doe',
+        createdAt: new Date(),
+      },
+      {
+        id: 2,
+        email: 'user2@example.com',
+        firstName: 'Jane',
+        lastName: 'Doe',
+        createdAt: new Date(),
+      },
+    ];
+
+    beforeEach(() => {
+      mockPrismaService.user.findMany = jest.fn();
+    });
+
+    it('Doit retourner tous les utilisateurs', async () => {
+      mockPrismaService.user.findMany.mockResolvedValue(mockUsers);
+
+      const result = await service.getAllUsers();
+
+      expect(prismaService.user.findMany).toHaveBeenCalledWith({
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          createdAt: true,
+        },
+      });
+      expect(result).toEqual(mockUsers);
+    });
+
+    it('Doit lancer une InternalServerErrorException en cas d\'erreur', async () => {
+      mockPrismaService.user.findMany.mockRejectedValue(new Error('DB Error'));
+
+      await expect(service.getAllUsers())
+        .rejects
+        .toThrow(InternalServerErrorException);
     });
   });
 });

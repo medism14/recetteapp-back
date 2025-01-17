@@ -4,13 +4,13 @@ import { Difficulty } from '@prisma/client';
 export class CreateRecipeDto {
   @ApiProperty({
     description: 'Nom de la recette',
-    example: 'Tarte au pommes'
+    example: 'Tarte aux pommes'
   })
   name: string;
 
   @ApiProperty({
     description: 'Description de la recette',
-    example: 'Une recette très connu et utilisé en chine dans les années 1800'
+    example: 'Une recette très connue et utilisée en chine dans les années 1800'
   })
   description?: string;
 
@@ -46,10 +46,10 @@ export class CreateRecipeDto {
   ingredients: string;
 
   @ApiProperty({
-    description: 'URL de l\'image de la recette',
-    example: 'https://example.com/tarte-pommes.jpg'
+    description: 'Image de la recette en base64',
+    example: 'data:image/jpeg;base64,/9j/4AAQSkZJRg...'
   })
-  imageUrl: string;
+  image: string;
 
   @ApiProperty({
     description: 'Identifiant de la catégorie de la recette',

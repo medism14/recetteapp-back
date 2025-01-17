@@ -18,7 +18,7 @@ describe('RecipesService', () => {
     cookTime: 30,
     difficulty: Difficulty.EASY,
     ingredients: 'Ingrédient 1, Ingrédient 2',
-    imageUrl: 'http://example.com/image.jpg',
+    image: 'data:image/jpeg;base64,/9j/4AAQSkZJRg...',
     userId: 5,
     categoryId: 1,
     createdAt: new Date(),
@@ -78,7 +78,7 @@ describe('RecipesService', () => {
       cookTime: 30,
       difficulty: Difficulty.EASY,
       ingredients: 'Ingrédients test',
-      imageUrl: 'http://example.com/image.jpg',
+      image: 'data:image/jpeg;base64,/9j/4AAQSkZJRg...',
       categoryId: 1,
     };
 
@@ -120,7 +120,7 @@ describe('RecipesService', () => {
       cookTime: 35,
       difficulty: Difficulty.MEDIUM,
       ingredients: 'Nouveaux ingrédients',
-      imageUrl: 'http://example.com/new-image.jpg',
+      image: 'data:image/jpeg;base64,/9j/4AAQSkZJRg...',
       categoryId: 2,
     };
 
@@ -153,6 +153,54 @@ describe('RecipesService', () => {
       mockPrismaService.recipe.findMany.mockResolvedValue([mockRecipe]);
       const result = await service.searchRecipe('test');
       expect(result).toEqual([mockRecipe]);
+    });
+  });
+
+  describe('getRecipesByUserId', () => {
+    const mockUserRecipes = [
+      {
+        id: 1,
+        name: 'Recette 1',
+        userId: 5,
+        // ... autres propriétés
+      },
+      {
+        id: 2,
+        name: 'Recette 2',
+        userId: 5,
+        // ... autres propriétés
+      },
+    ];
+
+    it('Retourne les recettes d\'un utilisateur spécifique', async () => {
+      mockPrismaService.recipe.findMany.mockResolvedValue(mockUserRecipes);
+      const result = await service.getRecipesByUserId(5);
+      
+      expect(prismaService.recipe.findMany).toHaveBeenCalledWith({
+        where: { userId: 5 },
+        include: {
+          category: true,
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+            },
+          },
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+      });
+      expect(result).toEqual(mockUserRecipes);
+    });
+
+    it('Gère les erreurs de récupération', async () => {
+      mockPrismaService.recipe.findMany.mockRejectedValue(new Error());
+      await expect(service.getRecipesByUserId(5))
+        .rejects
+        .toThrow(InternalServerErrorException);
     });
   });
 });

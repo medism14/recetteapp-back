@@ -64,4 +64,40 @@ export class FavoritesController {
     const userId = req.user['id'];
     return this.favoritesService.deleteFavorite(recipeId, userId);
   }
+
+  @ApiOperation({ summary: 'Récupérer les favoris d\'un utilisateur spécifique' })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Liste des favoris de l\'utilisateur récupérée avec succès',
+  })
+  @ApiResponse({ status: 404, description: 'Utilisateur non trouvé' })
+  @ApiParam({ 
+    name: 'userId', 
+    description: 'ID de l\'utilisateur dont on veut récupérer les favoris',
+    type: 'number' 
+  })
+  @Get('user/:userId')
+  getFavoritesByUserId(@Param('userId', ParseIntPipe) userId: number) {
+    return this.favoritesService.getFavoritesByUserId(userId);
+  }
+
+  @ApiOperation({ summary: 'Vérifier si une recette est dans les favoris de l\'utilisateur' })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Statut du favori récupéré avec succès',
+  })
+  @ApiResponse({ status: 401, description: 'Non autorisé' })
+  @ApiParam({ 
+    name: 'recipeId', 
+    description: 'ID de la recette à vérifier',
+    type: 'number' 
+  })
+  @Get('check/:recipeId')
+  async isFavorite(
+    @Req() req: Request,
+    @Param('recipeId', ParseIntPipe) recipeId: number
+  ): Promise<{ isFavorite: boolean }> {
+    const userId = req.user['id'];
+    return this.favoritesService.isFavorite(recipeId, userId);
+  }
 }

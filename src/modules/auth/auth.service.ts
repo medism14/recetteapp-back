@@ -38,23 +38,22 @@ export class AuthService {
    * @returns {Promise<AuthInfoDto>} - Token d'accès et infos de l'utilisateur
    */
   async register(createUserDto: CreateUserDto): Promise<AuthInfoDto> {
-    // Vérification de la longueur du mot de passe
-    if (createUserDto.password.length < 6) {
-      throw new BadRequestException('Le mot de passe doit contenir au moins 6 caractères');
-    }
-
-    // Hashage du mot de passe avant stockage
-    const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
-
     try {
+      // Vérification de la longueur du mot de passe
+      if (createUserDto.password.length < 6) {
+        throw new BadRequestException('Le mot de passe doit contenir au moins 6 caractères');
+      }
+
       // Vérification si l'email existe déjà
       const existingUser = await this.userService.getUserByEmail(createUserDto.email);
-
       if (existingUser) {
         throw new ConflictException("L'email est déjà utilisé");
       }
 
-      // Création du nouvel utilisateur
+      // Hashage du mot de passe
+      const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
+
+      // Création de l'utilisateur
       const newUser = await this.prismaService.user.create({
         data: {
           email: createUserDto.email,
@@ -64,14 +63,17 @@ export class AuthService {
         },
       });
 
-      // Génération du token et envoi des infos
       const accessToken = this.generateAccessToken(newUser.email);
       return { accessToken, user: newUser };
+
     } catch (error) {
+      console.error('Erreur lors de l\'inscription:', error);
       if (error instanceof ConflictException || error instanceof BadRequestException) {
         throw error;
       }
-      throw new InternalServerErrorException('Erreur lors de la création du compte');
+      throw new InternalServerErrorException(
+        'Erreur lors de la création du compte: ' + error.message
+      );
     }
   }
 
@@ -138,7 +140,9 @@ export class AuthService {
         throw new NotFoundException("L'utilisateur n'a pas été trouvé");
       }
 
-      return user;
+      const { password, ...userWithoutPass } = user;
+
+      return userWithoutPass;
     } catch (error) {
       if (error instanceof NotFoundException) {
         throw error;

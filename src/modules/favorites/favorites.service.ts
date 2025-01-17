@@ -152,4 +152,78 @@ export class FavoritesService {
             );
         }
     }
+
+    /**
+     * Méthode pour récupérer les favoris d'un utilisateur spécifique
+     * 
+     * @param userId - L'ID de l'utilisateur dont on veut récupérer les favoris
+     * @throws {NotFoundException} - Si l'utilisateur n'existe pas
+     * @throws {InternalServerErrorException} - Si la récupération échoue
+     * @returns {Promise<IFavorite[]>} - La liste des favoris de l'utilisateur
+     */
+    async getFavoritesByUserId(userId: number): Promise<IFavorite[]> {
+        try {
+            // Vérifier si l'utilisateur existe
+            const user = await this.prismaService.user.findUnique({
+                where: { id: userId }
+            });
+
+            if (!user) {
+                throw new NotFoundException(`Utilisateur avec l'ID ${userId} non trouvé`);
+            }
+
+            // Récupérer les favoris
+            const favorites = await this.prismaService.favorite.findMany({
+                where: { userId },
+                include: {
+                    recipe: {
+                        include: {
+                            category: true,
+                            user: {
+                                select: {
+                                    id: true,
+                                    firstName: true,
+                                    lastName: true,
+                                    email: true
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            return favorites;
+        } catch (error) {
+            if (error instanceof NotFoundException) {
+                throw error;
+            }
+            throw new InternalServerErrorException(
+                `Une erreur est survenue lors de la récupération des favoris de l'utilisateur ${userId}`
+            );
+        }
+    }
+
+    /**
+     * Méthode pour vérifier si une recette est dans les favoris d'un utilisateur
+     * 
+     * @param recipeId - L'ID de la recette à vérifier
+     * @param userId - L'ID de l'utilisateur
+     * @returns {Promise<{ isFavorite: boolean }>} - True si la recette est en favori
+     */
+    async isFavorite(recipeId: number, userId: number): Promise<{ isFavorite: boolean }> {
+        try {
+            const favorite = await this.prismaService.favorite.findFirst({
+                where: {
+                    userId,
+                    recipeId
+                }
+            });
+
+            return { isFavorite: !!favorite };
+        } catch (error) {
+            throw new InternalServerErrorException(
+                `Une erreur est survenue lors de la vérification du favori`
+            );
+        }
+    }
 }

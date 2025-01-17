@@ -45,10 +45,9 @@ export class AuthController {
       secure: process.env.NODE_ENV === 'PRODUCTION',
       sameSite: 'strict',
       maxAge: 24 * 60 * 60 * 1000,
-    });
+    }).status(201);
 
     return {
-      statusCode: 201,
       data: {
         id: user.id,
         email: user.email,
@@ -89,10 +88,9 @@ export class AuthController {
       secure: process.env.NODE_ENV === 'PRODUCTION',
       sameSite: 'strict',
       maxAge: 24 * 60 * 60 * 1000,
-    });
+    }).status(200);
 
     return {
-      statusCode: 200,
       data: {
         id: user.id,
         email: user.email,

@@ -1,7 +1,6 @@
-import { Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { PrismaService } from 'prisma/prisma.service';
 import { IUser } from '../../interfaces/user.interface';
-import { ApiTags } from '@nestjs/swagger';
 
 /**
  * Service responsable de la gestion des utilisateurs
@@ -19,15 +18,10 @@ export class UsersService {
    * @throws {InternalServerErrorException} En cas d'erreur lors de l'accès à la base de données
    * @returns {Promise<IUser>} Les informations de l'utilisateur trouvé
    */
-  async getUserByEmail(email: string): Promise<IUser> {
+  async getUserByEmail(email: string): Promise<IUser | null> {
     try {
-      // Recherche l'utilisateur dans la base de données via Prisma
-      // en utilisant l'email comme critère unique
-      const user = await this.prisma.user.findUnique({
-        where: {
-          email: email,
-        },
-        // Sélectionne uniquement les champs nécessaires pour la réponse
+      return await this.prisma.user.findUnique({
+        where: { email },
         select: {
           id: true,
           email: true,
@@ -36,22 +30,29 @@ export class UsersService {
           password: true,
         },
       });
-
-      // Si aucun utilisateur n'est trouvé, lance une exception NotFoundException
-      if (!user) {
-        throw new NotFoundException("Utilisateur non trouvé");
-      }
-
-      // Retourne les données de l'utilisateur si trouvé
-      return user;
     } catch (error) {
-      // Propage l'erreur NotFoundException si c'est le cas
-      if (error instanceof NotFoundException) {
-        throw error;
-      }
-      // Pour toute autre erreur, lance une InternalServerErrorException
+      console.error('Erreur Prisma:', error);
       throw new InternalServerErrorException(
-        "Erreur lors de la récupération de l'utilisateur par email",
+        `Erreur base de données: ${error.message}`
+      );
+    }
+  }
+
+  async getAllUsers(): Promise<IUser[]> {
+    try {
+      return await this.prisma.user.findMany({
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          createdAt: true,
+        },
+      });
+    } catch (error) {
+      console.error('Erreur Prisma:', error);
+      throw new InternalServerErrorException(
+        `Erreur lors de la récupération des utilisateurs: ${error.message}`
       );
     }
   }

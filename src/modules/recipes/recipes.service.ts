@@ -3,6 +3,7 @@ import {
   InternalServerErrorException,
   NotFoundException,
   UnauthorizedException,
+  BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from 'prisma/prisma.service';
 import { CreateRecipeDto } from './dto/create-recipe.dto';
@@ -74,7 +75,6 @@ export class RecipesService {
         include: {
           category: true,
           user: {
-            // On sélectionne uniquement les infos nécessaires de l'utilisateur
             select: {
               id: true,
               firstName: true,
@@ -103,7 +103,12 @@ export class RecipesService {
    */
   async createRecipe(createRecipeDto: CreateRecipeDto, userId: number): Promise<RecipeResponseDto> {
     try {
-      // Création de la recette avec toutes ses propriétés
+      // Validation basique du format base64
+
+      if (!this.isValidBase64Image(createRecipeDto.image)) {
+        throw new BadRequestException('Format d\'image invalide');
+      }
+
       return await this.prismaService.recipe.create({
         data: {
           name: createRecipeDto.name,
@@ -113,12 +118,11 @@ export class RecipesService {
           difficulty: createRecipeDto.difficulty,
           ingredients: createRecipeDto.ingredients,
           instructions: createRecipeDto.instructions,
-          imageUrl: createRecipeDto.imageUrl,
+          image: createRecipeDto.image,
           categoryId: createRecipeDto.categoryId,
-          userId, // Association avec l'utilisateur créateur
+          userId,
         },
         include: {
-          // Inclusion des relations pour la réponse
           category: true,
           user: {
             select: {
@@ -131,9 +135,42 @@ export class RecipesService {
         },
       });
     } catch (error) {
+
+      console.error(error);
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
       throw new InternalServerErrorException(
         'Une erreur est survenue lors de la création de la recette',
       );
+    }
+  }
+
+  // Méthode utilitaire pour valider le format base64
+  private isValidBase64Image(base64String: string): boolean {
+    try {
+      // Vérifie si la chaîne est définie
+      if (!base64String) {
+        return false;
+      }
+
+      // Vérifie le format général
+      const matches = base64String.match(/^data:image\/(jpeg|jpg|png|gif);base64,/);
+      if (!matches) {
+        return false;
+      }
+
+      // Récupère la partie base64 après le préfixe
+      const base64Data = base64String.split(',')[1];
+      if (!base64Data) {
+        return false;
+      }
+
+      // Vérifie que c'est un base64 valide
+      const buffer = Buffer.from(base64Data, 'base64');
+      return buffer.length > 0;
+    } catch (e) {
+      return false;
     }
   }
 
@@ -269,5 +306,32 @@ export class RecipesService {
         },
       },
     });
+  }
+
+  /**
+   * Méthode pour récupérer les recettes d'un utilisateur
+   * 
+   * @param userId - L'ID de l'utilisateur dont on veut les recettes
+   * @returns {Promise<RecipeResponseDto[]>} - Les recettes de l'utilisateur
+   */
+  async getRecipesByUserId(userId: number): Promise<RecipeResponseDto[]> {
+    try {
+      return await this.prismaService.recipe.findMany({
+        where: {
+          userId: userId,
+        },
+        include: {
+          category: true,
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+      });
+    } catch (error) {
+      console.error(error);
+      throw new InternalServerErrorException(
+        'Une erreur est survenue lors de la récupération des recettes',
+      );
+    }
   }
 }
