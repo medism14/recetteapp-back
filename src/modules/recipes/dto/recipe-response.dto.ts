@@ -1,5 +1,10 @@
 import { Difficulty } from '@prisma/client';
 
+/**
+ * DTO définissant la structure de réponse d'une recette
+ * Utilisé pour standardiser les données renvoyées par l'API
+ * Inclut toutes les informations d'une recette ainsi que ses relations
+ */
 export class RecipeResponseDto {
   id: number;
   name: string;
@@ -14,6 +19,8 @@ export class RecipeResponseDto {
   categoryId: number;
   createdAt: Date;
   updatedAt: Date;
+  
+  // Relations incluses dans la réponse
   category?: {
     id: number;
     name: string;

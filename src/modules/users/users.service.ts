@@ -4,7 +4,8 @@ import { IUser } from '../../interfaces/user.interface';
 
 /**
  * Service responsable de la gestion des utilisateurs
- * Grâce à prisma pour communiquer avec notre base de donnée
+ * Ce service utilise Prisma comme ORM pour interagir avec la base de données
+ * et gérer toutes les opérations liées aux utilisateurs
  */
 @Injectable()
 export class UsersService {
@@ -14,9 +15,12 @@ export class UsersService {
    * Récupère un utilisateur à partir de son adresse email
    * 
    * @param email - L'adresse email de l'utilisateur à rechercher
-   * @throws {NotFoundException} Si aucun utilisateur n'est trouvé avec cet email
-   * @throws {InternalServerErrorException} En cas d'erreur lors de l'accès à la base de données
-   * @returns {Promise<IUser>} Les informations de l'utilisateur trouvé
+   * @returns Promise<IUser | null> - Retourne l'utilisateur trouvé ou null si aucun utilisateur n'existe
+   * @throws InternalServerErrorException - En cas d'erreur lors de l'accès à la base de données
+   * 
+   * @example
+   * // Récupérer un utilisateur
+   * const user = await userService.getUserByEmail('user@example.com');
    */
   async getUserByEmail(email: string): Promise<IUser | null> {
     try {
@@ -38,6 +42,16 @@ export class UsersService {
     }
   }
 
+  /**
+   * Récupère la liste complète des utilisateurs
+   * 
+   * @returns Promise<IUser[]> - Retourne un tableau contenant tous les utilisateurs
+   * @throws InternalServerErrorException - En cas d'erreur lors de l'accès à la base de données
+   * 
+   * @example
+   * // Récupérer tous les utilisateurs
+   * const users = await userService.getAllUsers();
+   */
   async getAllUsers(): Promise<IUser[]> {
     try {
       return await this.prisma.user.findMany({

@@ -10,62 +10,71 @@ import { CreateRecipeDto } from './dto/create-recipe.dto';
 import { UpdateRecipeDto } from './dto/update-recipe.dto';
 import { FilterRecipeDto } from './dto/filter-recipe.dto';
 import { RecipeResponseDto } from './dto/recipe-response.dto';
+import { Difficulty } from '@prisma/client';
 
 /**
- * Service où l'on gère les recettes 
- * Nous utilisons ici plusieurs fonctions avec prisma pour un accès et une communication avec la bdd
+ * Service de gestion des recettes
+ * Ce service gère toutes les opérations CRUD et la logique métier liée aux recettes
+ * Il utilise Prisma comme ORM pour interagir avec la base de données
  */
 @Injectable()
 export class RecipesService {
   constructor(private prismaService: PrismaService) {}
 
   /**
-   * Méthode pour récupérer toutes les recettes existantes
+   * Récupère toutes les recettes avec possibilité de filtrage et tri
    * 
-   * @param filterDto - Contient tous les filtres que l'utilisateur peut appliquer
-   * @throws {InternalServerErrorException} - En cas d'erreur avec les requêtes prisma
-   * @returns {Promise<RecipeResponseDto[]>} - Un ensemble de recettes avec la catégorie et l'utilisateur
+   * @param filters - Objet contenant les critères de filtrage et tri
+   *   - difficulty: Niveau de difficulté de la recette
+   *   - categoryId: Filtre par catégorie
+   *   - ingredients: Recherche dans les ingrédients
+   *   - sortBy: Champ de tri (createdAt, name, prepTime, cookTime)
+   * 
+   * @returns Liste des recettes filtrées avec leurs relations (catégorie, utilisateur, favoris)
+   * @throws InternalServerErrorException si la requête échoue
    */
-  async getAllRecipes(filterDto?: FilterRecipeDto): Promise<RecipeResponseDto[]> {
+  async getAllRecipes(filters: {
+    difficulty?: Difficulty;
+    categoryId?: number;
+    ingredients?: string;
+    sortBy?: 'createdAt' | 'name' | 'prepTime' | 'cookTime';
+  }): Promise<RecipeResponseDto[]> {
     try {
-      // Initialisation des objets pour les conditions WHERE et ORDER BY
-      const where = {};
-      let orderBy: any = {};
+      const where: any = {};
+      let orderBy: any = { createdAt: 'desc' };
 
-      // Application des filtres si présents
-      if (filterDto?.difficulty) {
-        where['difficulty'] = filterDto.difficulty;
+      if (filters.difficulty) {
+        where.difficulty = filters.difficulty;
       }
 
-      if (filterDto?.categoryId) {
-        where['categoryId'] = filterDto.categoryId;
+      if (filters.categoryId) {
+        where.categoryId = filters.categoryId;
       }
 
-      // Recherche insensible à la casse dans les ingrédients
-      if (filterDto?.ingredients) {
-        where['ingredients'] = {
-          contains: filterDto.ingredients,
+      if (filters.ingredients) {
+        where.ingredients = {
+          contains: filters.ingredients,
           mode: 'insensitive',
         };
       }
 
-      // Gestion du tri des recettes selon différents critères
-      switch (filterDto?.sortBy) {
-        case 'createdAt':
-          orderBy = { createdAt: 'desc' };
-          break;
-        case 'name':
-          orderBy = { name: 'asc' };
-          break;
-        case 'prepTime':
-          orderBy = { prepTime: 'asc' };
-          break;
-        case 'cookTime':
-          orderBy = { cookTime: 'asc' };
-          break;
-        default:
-          // Par défaut, tri par date de création décroissante
-          orderBy = { createdAt: 'desc' };
+      // Gestion du tri
+      if (filters.sortBy) {
+        switch (filters.sortBy) {
+          case 'name':
+            orderBy = { name: 'asc' };
+            break;
+          case 'prepTime':
+            orderBy = { prepTime: 'asc' };
+            break;
+          case 'cookTime':
+            orderBy = { cookTime: 'asc' };
+            break;
+          case 'createdAt':
+          default:
+            orderBy = { createdAt: 'desc' };
+            break;
+        }
       }
 
       // Récupération des recettes avec leurs relations
@@ -82,11 +91,13 @@ export class RecipesService {
               email: true,
             },
           },
+          favorites: true,
         },
       });
 
       return recipes;
     } catch (error) {
+      console.error('Erreur lors de la récupération des recettes:', error);
       throw new InternalServerErrorException(
         'Une erreur est survenue lors de la récupération des recettes',
       );
@@ -94,12 +105,14 @@ export class RecipesService {
   }
 
   /**
-   * Méthode pour créer une nouvelle recette
+   * Crée une nouvelle recette dans la base de données
    * 
-   * @param createRecipeDto - Les données de la recette à créer
-   * @param userId - L'ID de l'utilisateur qui crée la recette
-   * @throws {InternalServerErrorException} - Si la création échoue
-   * @returns {Promise<RecipeResponseDto>} - La recette créée avec sa catégorie et son créateur
+   * @param createRecipeDto - Données de la nouvelle recette
+   * @param userId - ID de l'utilisateur créant la recette
+   * 
+   * @returns La recette créée avec ses relations
+   * @throws BadRequestException si l'image n'est pas au format base64 valide
+   * @throws InternalServerErrorException si la création échoue
    */
   async createRecipe(createRecipeDto: CreateRecipeDto, userId: number): Promise<RecipeResponseDto> {
     try {
@@ -146,7 +159,13 @@ export class RecipesService {
     }
   }
 
-  // Méthode utilitaire pour valider le format base64
+  /**
+   * Vérifie si une chaîne est une image base64 valide
+   * Accepte les formats: jpeg, jpg, png, gif
+   * 
+   * @param base64String - Chaîne à valider
+   * @returns true si le format est valide, false sinon
+   */
   private isValidBase64Image(base64String: string): boolean {
     try {
       // Vérifie si la chaîne est définie

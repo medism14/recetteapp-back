@@ -3,9 +3,9 @@ import { Injectable, InternalServerErrorException, NotFoundException, Unauthoriz
 import { PrismaService } from 'prisma/prisma.service';
 
 /**
- * Service où sont gérés les favoris d'un utilisateur
- * On peut récupérer, ajouter et supprimer des recettes des favoris
- * Chaque méthode vérifie les droits de l'utilisateur
+ * Service de gestion des favoris
+ * Permet aux utilisateurs de gérer leurs recettes favorites
+ * Inclut les opérations CRUD et les vérifications de droits d'accès
  */
 @Injectable()
 export class FavoritesService {
@@ -14,12 +14,11 @@ export class FavoritesService {
     ) {}
 
     /**
-     * Méthode pour récupérer tous les favoris d'un utilisateur
-     * On inclut les détails de la recette et sa catégorie pour l'affichage
+     * Récupère tous les favoris d'un utilisateur
      * 
-     * @param userId - L'ID de l'utilisateur dont on veut les favoris
-     * @throws {InternalServerErrorException} - Si la récupération échoue
-     * @returns {Promise<IFavorite[]>} - La liste des favoris avec les recettes complètes
+     * @param userId - ID de l'utilisateur
+     * @returns Liste des favoris avec les détails des recettes et catégories associées
+     * @throws InternalServerErrorException si la récupération échoue
      */
     async getAllFavorites(userId: number): Promise<IFavorite[]> {
         try {
@@ -44,15 +43,13 @@ export class FavoritesService {
     }
 
     /**
-     * Méthode pour ajouter une recette aux favoris
-     * Vérifie d'abord si la recette existe et si elle n'est pas déjà en favori
+     * Ajoute une recette aux favoris d'un utilisateur
      * 
-     * @param recipeId - L'ID de la recette à ajouter aux favoris
-     * @param userId - L'ID de l'utilisateur qui ajoute le favori
-     * @throws {NotFoundException} - Si la recette n'existe pas
-     * @throws {UnauthorizedException} - Si la recette est déjà dans les favoris
-     * @throws {InternalServerErrorException} - Si l'ajout échoue
-     * @returns {Promise<IFavorite>} - Le favori créé avec les détails de la recette
+     * @param recipeId - ID de la recette à ajouter
+     * @param userId - ID de l'utilisateur
+     * @returns Le favori créé avec les détails de la recette
+     * @throws NotFoundException si la recette n'existe pas
+     * @throws UnauthorizedException si la recette est déjà en favori
      */
     async createFavorite(recipeId: number, userId: number): Promise<IFavorite> {
         try {

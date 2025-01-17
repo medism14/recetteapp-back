@@ -4,10 +4,15 @@ import { UsersService } from './users.service';
 import { Request } from 'express';
 import { InternalServerErrorException } from '@nestjs/common';
 
+/**
+ * Suite de tests pour UsersController
+ * Ces tests vérifient le bon fonctionnement des endpoints liés aux utilisateurs
+ */
 describe('UsersController', () => {
   let controller: UsersController;
   let usersService: UsersService;
 
+  // Mock d'un utilisateur pour les tests
   const mockUser = {
     id: 1,
     email: 'test@example.com',
@@ -16,11 +21,13 @@ describe('UsersController', () => {
     password: 'hashedPassword',
   };
 
+  // Mock du service utilisateur
   const mockUsersService = {
     getUserByEmail: jest.fn(),
     getAllUsers: jest.fn(),
   };
 
+  // Configuration initiale avant chaque test
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [UsersController],

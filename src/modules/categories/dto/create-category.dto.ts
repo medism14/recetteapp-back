@@ -1,5 +1,9 @@
 import { ApiProperty } from '@nestjs/swagger';
 
+/**
+ * DTO pour la création d'une nouvelle catégorie
+ * Définit la structure des données attendues lors de la création
+ */
 export class CreateCategoryDto {
   @ApiProperty({
     description: 'Le nom de la catégorie',

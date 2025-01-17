@@ -16,6 +16,7 @@ import { UpdateRecipeDto } from './dto/update-recipe.dto';
 import { FilterRecipeDto } from './dto/filter-recipe.dto';
 import { Request } from 'express';
 import { ApiOperation, ApiResponse, ApiTags, ApiParam, ApiBody, ApiQuery } from '@nestjs/swagger';
+import { Difficulty } from '@prisma/client';
 
 @ApiTags('Recettes')
 @Controller('recipes')
@@ -27,8 +28,18 @@ export class RecipesController {
   @ApiResponse({ status: 500, description: 'Erreur serveur lors de la récupération' })
   @ApiQuery({ type: FilterRecipeDto, required: false })
   @Get()
-  getAllRecipes(@Query() filterDto?: FilterRecipeDto) {
-    return this.recipesService.getAllRecipes(filterDto);
+  getAllRecipes(
+    @Query('difficulty') difficulty?: string,
+    @Query('categoryId') categoryId?: string,
+    @Query('ingredients') ingredients?: string,
+    @Query('sortBy') sortBy?: string,
+  ) {
+    return this.recipesService.getAllRecipes({
+      difficulty: difficulty as Difficulty,
+      categoryId: categoryId ? parseInt(categoryId) : undefined,
+      ingredients,
+      sortBy: sortBy as 'createdAt' | 'name' | 'prepTime' | 'cookTime',
+    });
   }
 
   @ApiOperation({ summary: 'Créer une nouvelle recette' })

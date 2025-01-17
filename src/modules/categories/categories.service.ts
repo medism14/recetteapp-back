@@ -4,24 +4,24 @@ import { CreateCategoryDto } from './dto/create-category.dto';
 import { ICategory } from '@/interfaces/category.interface';
 
 /**
- * Service qui gère les catégories de recettes
- * On peut récupérer toutes les catégories ou en créer de nouvelles
- * Chaque catégorie doit avoir un nom unique
+ * Service de gestion des catégories de recettes
+ * Fournit les fonctionnalités de base pour gérer les catégories:
+ * - Récupération de toutes les catégories
+ * - Création de nouvelles catégories avec vérification d'unicité
  */
 @Injectable()
 export class CategoriesService {
   constructor(private prismaService: PrismaService) {}
 
   /**
-   * Méthode pour récupérer toutes les catégories existantes
-   * Utilisée pour le filtrage des recettes et l'affichage des catégories disponibles
+   * Récupère la liste complète des catégories
+   * Utilisé pour le filtrage des recettes et l'affichage des options disponibles
    * 
-   * @throws {InternalServerErrorException} - Si la récupération échoue
-   * @returns {Promise<ICategory[]>} - La liste de toutes les catégories
+   * @returns Liste de toutes les catégories existantes
+   * @throws InternalServerErrorException si la récupération échoue
    */
   async getAllCategories(): Promise<ICategory[]> {
     try {
-      // Simple récupération de toutes les catégories sans filtre
       return await this.prismaService.category.findMany();
     } catch (error) {
       throw new InternalServerErrorException(
@@ -31,13 +31,12 @@ export class CategoriesService {
   }
 
   /**
-   * Méthode pour créer une nouvelle catégorie
-   * Vérifie d'abord qu'aucune catégorie n'existe avec le même nom
+   * Crée une nouvelle catégorie
    * 
-   * @param createCategoryDto - Les données de la nouvelle catégorie
-   * @throws {ConflictException} - Si une catégorie avec ce nom existe déjà
-   * @throws {InternalServerErrorException} - Si la création échoue
-   * @returns {Promise<ICategory>} - La catégorie créée
+   * @param createCategoryDto - Données de la nouvelle catégorie (nom et description optionnelle)
+   * @returns La catégorie nouvellement créée
+   * @throws ConflictException si une catégorie avec le même nom existe déjà
+   * @throws InternalServerErrorException si la création échoue
    */
   async createCategory(createCategoryDto: CreateCategoryDto): Promise<ICategory> {
     try {

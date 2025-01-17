@@ -7,12 +7,6 @@ describe('FavoritesController', () => {
   let controller: FavoritesController;
   let favoritesService: FavoritesService;
 
-  const mockFavoritesService = {
-    getAllFavorites: jest.fn(),
-    createFavorite: jest.fn(),
-    deleteFavorite: jest.fn(),
-  };
-
   const mockFavorite = {
     id: 1,
     userId: 5,
@@ -30,9 +24,19 @@ describe('FavoritesController', () => {
       imageUrl: 'http://example.com/image.jpg',
       userId: 1,
       categoryId: 1,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      category: {
+        id: 1,
+        name: 'Catégorie Test'
+      }
     }
+  };
+
+  const mockFavoritesService = {
+    getAllFavorites: jest.fn(),
+    createFavorite: jest.fn(),
+    deleteFavorite: jest.fn(),
+    getFavoritesByUserId: jest.fn(),
+    isFavorite: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -50,49 +54,57 @@ describe('FavoritesController', () => {
     favoritesService = module.get<FavoritesService>(FavoritesService);
   });
 
-  afterEach(() => {
-    jest.clearAllMocks();
-  });
-
   describe('getAllFavorites', () => {
-    it('Retourne tous les favoris d\'un utilisateur', async () => {
+    it('devrait retourner tous les favoris de l\'utilisateur', async () => {
+      const mockRequest = { user: { id: 5 } } as unknown as Request;
       mockFavoritesService.getAllFavorites.mockResolvedValue([mockFavorite]);
-      const mockRequest = {
-        user: { id: 5 }
-      } as unknown as Request;
 
       const result = await controller.getAllFavorites(mockRequest);
-
       expect(favoritesService.getAllFavorites).toHaveBeenCalledWith(5);
       expect(result).toEqual([mockFavorite]);
     });
   });
 
   describe('createFavorite', () => {
-    it('Crée un favori avec succès', async () => {
+    it('devrait créer un nouveau favori', async () => {
+      const mockRequest = { user: { id: 5 } } as unknown as Request;
       mockFavoritesService.createFavorite.mockResolvedValue(mockFavorite);
-      const mockRequest = {
-        user: { id: 5 }
-      } as unknown as Request;
 
       const result = await controller.createFavorite(mockRequest, 1);
-
       expect(favoritesService.createFavorite).toHaveBeenCalledWith(1, 5);
       expect(result).toEqual(mockFavorite);
     });
   });
 
   describe('deleteFavorite', () => {
-    it('Supprime un favori avec succès', async () => {
+    it('devrait supprimer un favori', async () => {
+      const mockRequest = { user: { id: 5 } } as unknown as Request;
       mockFavoritesService.deleteFavorite.mockResolvedValue({ message: 'Favori supprimé avec succès' });
-      const mockRequest = {
-        user: { id: 5 }
-      } as unknown as Request;
 
       const result = await controller.deleteFavorite(mockRequest, 1);
-
       expect(favoritesService.deleteFavorite).toHaveBeenCalledWith(1, 5);
       expect(result.message).toBe('Favori supprimé avec succès');
+    });
+  });
+
+  describe('getFavoritesByUserId', () => {
+    it('devrait retourner les favoris d\'un utilisateur spécifique', async () => {
+      mockFavoritesService.getFavoritesByUserId.mockResolvedValue([mockFavorite]);
+
+      const result = await controller.getFavoritesByUserId(5);
+      expect(favoritesService.getFavoritesByUserId).toHaveBeenCalledWith(5);
+      expect(result).toEqual([mockFavorite]);
+    });
+  });
+
+  describe('isFavorite', () => {
+    it('devrait vérifier si une recette est en favori', async () => {
+      const mockRequest = { user: { id: 5 } } as unknown as Request;
+      mockFavoritesService.isFavorite.mockResolvedValue({ isFavorite: true });
+
+      const result = await controller.isFavorite(mockRequest, 1);
+      expect(favoritesService.isFavorite).toHaveBeenCalledWith(1, 5);
+      expect(result).toEqual({ isFavorite: true });
     });
   });
 });
